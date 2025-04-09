@@ -33,6 +33,6 @@ config_t parsing_arguments(int argc, char *argv[]); // funzione che prende in in
 char *preprocessing_file(const char *input_file, precompiler_stats_t *stats); // preprocessing del file in input
 char *resolve_includes(const char *code, precompiler_stats_t *stats); // risolvere gli include
 char *remove_comments(const char *code, precompiler_stats_t *stats);
-void print_stats(const precompiler_stats_t *stats); // stampo su stdout le statische in modalità verbose
 void validate_identifiers(const char *code, precompiler_stats_t *stats, const char *filename); // validare gli identificatori
 void handle_error(const char *message, const char *filename, bool fatal); // gestione errori
+void print_stats(const precompiler_stats_t *stats); // stampo su stdout le statische in modalità verbose
