@@ -32,6 +32,5 @@ typedef struct
 config_t parsing_argomenti(int argc, char *argv[]); // funzione che prende in input il file da analizzare e precompilare
 char *preprocessing_file(const char *input_file, precompiler_stats_t *stats); // preprocessing del file in input
 void print_stats(const precompiler_stats_t *stats); // stampo su stdout le statische in modalità verbose
-                        // risolvere gli include
-
+char *resolve_includes(const char *code, precompiler_stats_t *stats); // risolvere gli include
 
