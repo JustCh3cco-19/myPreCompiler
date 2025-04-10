@@ -4,7 +4,7 @@
 
 - [ ] parsing_arguments
 - [ ] preprocessing_files
-- [ ] resolve_includes
+- [x] resolve_includes
 - [ ] resolve_comments
 - [ ] validate_identifiers
 - [ ] handle_error
