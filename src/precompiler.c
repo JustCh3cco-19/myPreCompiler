@@ -131,6 +131,116 @@ char *resolve_includes(const char *code, precompiler_stats_t *stats) {
     return output;
 }
 
+void resolve_comments(const char *inputFile, const char *outputFile) {
+    // Usa read_file_content per leggere l'intero contenuto del file di input
+    long size;
+    int num_lines;
+    char *file_content = read_file_content(inputFile, &size, &num_lines);
+    if (!file_content) {
+        // Se read_file_content fallisce, l'errore è già stato gestito
+        return;
+    }
+
+    // Alloca un buffer per il contenuto di output (dimensione iniziale pari a quella dell'input)
+    char *output_content = malloc(size + 1);
+    if (!output_content) {
+        handle_error("Errore di allocazione per l'output in rimuoviCommenti", NULL, true);
+        free(file_content);
+        return;
+    }
+
+    // Inizializzazione degli indicatori di stato per la rimozione dei commenti
+    int i = 0, j = 0;
+    bool inCommento = false;
+    bool inStringa = false;
+    bool inCarattere = false;
+    int commentCount = 0;
+
+    // Scorre il contenuto del file carattere per carattere
+    while (file_content[i] != '\0') {
+        char c = file_content[i];
+        char next = file_content[i + 1];
+
+        // Gestione degli escape all'interno di stringhe o caratteri
+        if ((inStringa || inCarattere) && c == '\\' && file_content[i+1] != '\0') {
+            output_content[j++] = c;
+            output_content[j++] = file_content[i+1];
+            i += 2;
+            continue;
+        }
+
+        // Entrata/Uscita dalla stringa
+        if (!inCommento && !inCarattere && c == '\"') {
+            inStringa = !inStringa;
+            output_content[j++] = c;
+            i++;
+            continue;
+        }
+
+        // Entrata/Uscita dal carattere
+        if (!inCommento && !inStringa && c == '\'') {
+            inCarattere = !inCarattere;
+            output_content[j++] = c;
+            i++;
+            continue;
+        }
+
+        // Gestione dei commenti (solo se non siamo in stringa o carattere)
+        if (!inStringa && !inCarattere) {
+            // Inizio di un commento multilinea
+            if (!inCommento && c == '/' && next == '*') {
+                inCommento = true;
+                commentCount++;
+                i += 2;
+                continue;
+            }
+            // Inizio di un commento monoriga
+            else if (!inCommento && c == '/' && next == '/') {
+                commentCount++;
+                // Salta i caratteri fino al termine della linea
+                while (file_content[i] != '\n' && file_content[i] != '\0') {
+                    i++;
+                }
+                // Se troviamo il carattere newline, lo copiamo e passiamo oltre
+                if (file_content[i] == '\n') {
+                    output_content[j++] = file_content[i++];
+                }
+                continue;
+            }
+            // Fine di un commento multilinea
+            else if (inCommento && c == '*' && next == '/') {
+                inCommento = false;
+                i += 2;
+                continue;
+            }
+        }
+
+        // Se non siamo in un blocco di commento, copiamo il carattere nell'output
+        if (!inCommento) {
+            output_content[j++] = c;
+        }
+        i++;
+    }
+    output_content[j] = '\0';
+
+    // Scrive il contenuto processato (senza commenti) nel file di output
+    FILE *out = fopen(outputFile, "w");
+    if (!out) {
+        handle_error("Errore nell'apertura del file output", outputFile, true);
+        free(file_content);
+        free(output_content);
+        return;
+    }
+    fputs(output_content, out);
+    fclose(out);
+
+    // Opzionale: stampa il numero totale di commenti rimossi
+    printf("Numero di commenti rimossi: %d\n", commentCount);
+
+    free(file_content);
+    free(output_content);
+}
+
 
 // funzione per stampare le statistiche
 void print_stats(const precompiler_stats_t *stats) { 
