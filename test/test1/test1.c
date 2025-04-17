@@ -23,7 +23,7 @@ int main(int argc, char *args[])
 	/* 
 	 * Qui' il codice per gestire i parametri di input
 	 */
-	for (i=1;i<=10i++){
+	for (i=1;i<=10;i++){
 		average=average+i;
 		global_counter++;
 	}
