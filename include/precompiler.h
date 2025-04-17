@@ -1,38 +1,38 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 
-/**
- * @brief  myPreCompiler data types
-\**********************************************************************/
-
+/* -------------------------------------------------------------
+ *  Configuration collected from command line
+ * -----------------------------------------------------------*/
 typedef struct {
-    char *input_file; // file da mandare in input
-    char *output_file; // file su stdout
-    bool valido; // controlla se l'input sia valido o meno
-    bool verbose; // output verbose dove vengono mostrate tutte le statistiche necessarie
+    char *input_file;   /*  -i / --in  (mandatory)             */
+    char *output_file;  /*  -o / --out (optional, stdout else) */
+    bool  verbose;      /*  -v / --verbose                     */
+    bool  valid;        /*  parsed ok?                         */
 } config_t;
 
-typedef struct 
-{
-    /* data */ 
-    int num_variables; // numero di variabili
-    int num_errors; // numero di errori
-    int num_comments_removed; // numero di commenti rimossi
-    int num_files_included; // numero di file inclusi
-    long input_size; // size dell'input
-    int input_lines; // righe in input
-    long output_size; // size dell'output
-    int output_lines; // righe in output
+/* -------------------------------------------------------------
+ *  Processing statistics (updated incrementally)
+ * -----------------------------------------------------------*/
+typedef struct {
+    int   num_variables;        /* identifiers checked            */
+    int   num_errors;           /* invalid identifiers found      */
+    int   num_comments_removed; /* total comment blocks removed   */
+    int   num_files_included;   /* #include files brought in      */
+    long  input_size;           /* original INPUT bytes           */
+    int   input_lines;          /* original INPUT lines           */
+    long  output_size;          /* final OUTPUT bytes             */
+    int   output_lines;         /* final OUTPUT lines             */
 } precompiler_stats_t;
 
-/**
- * @brief  myPreCompiler public functions
-\**********************************************************************/
-config_t parsing_arguments(int argc, char *argv[]); // funzione che prende in input il file da analizzare e precompilare
-char *preprocessing_file(const char *input_file, precompiler_stats_t *stats); // preprocessing del file in input
-char *resolve_includes(const char *code, precompiler_stats_t *stats); // risolvere gli include
-char *remove_comments(const char *code, precompiler_stats_t *stats);
-void validate_identifiers(const char *code, precompiler_stats_t *stats, const char *filename); // validare gli identificatori
-void handle_error(const char *message, const char *filename, bool fatal); // gestione errori
-void print_stats(const precompiler_stats_t *stats); // stampo su stdout le statische in modalità verbose
+/* ================  Public API  =============================*/
+
+config_t parsing_arguments(int argc, char *argv[]);
+char    *preprocessing_file(const char *input_file, precompiler_stats_t *stats);
+char    *resolve_includes (const char *code, precompiler_stats_t *stats);
+char    *remove_comments  (const char *code, precompiler_stats_t *stats);
+void     validate_identifiers(const char *code, precompiler_stats_t *stats, const char *filename);
+void     handle_error(const char *message, const char *filename, bool fatal);
+void     print_stats(const precompiler_stats_t *stats);
