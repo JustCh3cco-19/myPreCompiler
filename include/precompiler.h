@@ -7,8 +7,8 @@
  *  Configuration collected from command line
  * -----------------------------------------------------------*/
 typedef struct {
-    char *input_file;   /*  -i / --in  (mandatory)             */
-    char *output_file;  /*  -o / --out (optional, stdout else) */
+    const char *input_file;   /*  -i / --in  (mandatory)             */
+    const char *output_file;  /*  -o / --out (optional, stdout else) */
     bool  verbose;      /*  -v / --verbose                     */
     bool  valid;        /*  parsed ok?                         */
 } config_t;

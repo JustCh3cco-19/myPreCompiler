@@ -2,10 +2,10 @@
 
 ### Funzioni TODO
 
-- [ ] parsing_arguments
+- [x] parsing_arguments
 - [ ] preprocessing_files
 - [x] resolve_includes
 - [x] resolve_comments
 - [ ] validate_identifiers
-- [ ] handle_error
+- [x] handle_error
 - [x] print_stats

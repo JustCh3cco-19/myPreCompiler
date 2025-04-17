@@ -2,8 +2,148 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdbool.h>
 #include "precompiler.h"
 
+/*=====================================================================
+ *  Helpers
+ *===================================================================*/
+static void usage(FILE *stream, const char *prog) {
+    fprintf(stream,
+        "Usage: %s [options] <input.c\n"
+        "Options:\n"
+        " -i, --in <file>   file di input (obbligatorio se non passato come argomento libero)\n"
+        " -o, --out <file>  file di output (stout se omesso)\n"
+        " -v, --verbose     stampa statistiche su stderr\n"
+        " -h, --help        mostra questo messaggio\n",
+        prog 
+    );
+}
+
+/*=====================================================================
+ *  parsing_arguments function  
+ *===================================================================*/
+config_t parsing_arguments(int argc, char *argv[])
+{
+    config_t cfg = { 
+        .input_file=NULL, 
+        .output_file=NULL,
+        .verbose=false, 
+        .valid=false 
+    };
+    
+    bool error = false;
+    int  i = 1;
+
+    while (i < argc && !error) {
+        const char *arg = argv[i];
+
+        /* -------- 1) token che NON inizia con '-' --------------*/
+        if (arg[0] != '-') {
+            if (!cfg.input_file)
+                cfg.input_file = arg;
+            else
+                handle_error("Extra positional argument", arg, !(error = true));
+            ++i;
+            continue;
+        }
+
+        /* -------- 2) token '--' (terminatore) -----------------*/
+        if (strcmp(arg, "--") == 0) {      /* solo due trattini   */
+            ++i;                           /* avanza di uno       */
+            if (i < argc && !cfg.input_file)
+                cfg.input_file = argv[i++]; // passa all'argomento successivo passato input
+            else if (i < argc) {
+                handle_error("Extra positional argument", argv[i], !(error = true));
+                ++i;
+            }
+            break;                         /* fine parsing opzioni */
+        }
+
+        /* -------- 3) opzioni che iniziano con '--' ------------*/
+        if (strncmp(arg, "--", 2) == 0) {
+            const char *opt = arg + 2;     /* salta i due '-'     */
+            const char *val = NULL;
+            /* supporta la forma --opt=val ----------------------*/
+            const char *eq  = strchr(opt, '=');
+            if (eq) { val = eq+1; }
+
+            switch (opt[0]) {
+
+            case 'i':      /* --in  / --in=val */
+                if (strncmp(opt, "in", 2) == 0) {
+                    if (!val) {            /* nessun '=', prendi argv[i+1] */
+                        if (++i >= argc) { handle_error("Missing arg for --in",NULL,!(error=true)); break; }
+                        val = argv[i];
+                    }
+                    if (cfg.input_file) { handle_error("Input dup",val,!(error=true)); }
+                    else cfg.input_file = (char *)val;
+                    ++i;
+                    continue;
+                }
+                break;
+
+            case 'o':      /* --out / --out=val */
+                if (strncmp(opt, "out", 3) == 0) {
+                    if (!val) {
+                        if (++i >= argc) { handle_error("Missing arg for --out",NULL,!(error=true)); break; }
+                        val = argv[i];
+                    }
+                    if (cfg.output_file) { handle_error("Output dup",val,!(error=true)); }
+                    else cfg.output_file = (char *)val;
+                    ++i;
+                    continue;
+                }
+                break;
+
+            case 'v':      /* --verbose (senza arg.) */
+                if (strcmp(opt, "verbose") == 0) {
+                    if (val) { handle_error("--verbose no value", val, !(error=true)); }
+                    cfg.verbose = true;
+                    ++i;
+                    continue;
+                }
+                break;
+            }
+            handle_error("Unknown long option", arg, !(error=true));
+            continue;
+        }
+
+        /* -------- 4) opzioni corte (-i, -o, -v) ----------------*/
+        switch (arg[1]) {
+
+        case 'i':   /* -i FILE */
+            if (arg[2] != '\0') { handle_error("Use space after -i",arg,!(error=true)); break; }
+            if (++i >= argc)    { handle_error("Missing arg for -i",NULL,!(error=true)); break; }
+            if (cfg.input_file){ handle_error("Input dup",argv[i],!(error=true)); break; }
+            cfg.input_file = argv[i++];
+            continue;
+
+        case 'o':   /* -o FILE */
+            if (arg[2] != '\0') { handle_error("Use space after -o",arg,!(error=true)); break; }
+            if (++i >= argc)    { handle_error("Missing arg for -o",NULL,!(error=true)); break; }
+            if (cfg.output_file){ handle_error("Output dup",argv[i],!(error=true)); break; }
+            cfg.output_file = argv[i++];
+            continue;
+
+        case 'v':   /* -v      */
+            if (arg[2] != '\0') { handle_error("Use -v alone",arg,!(error=true)); break; }
+            cfg.verbose = true;
+            ++i;
+            continue;
+
+        default:
+            handle_error("Unknown option", arg, !(error=true));
+            ++i;
+        }
+    }
+
+    if (!error && !cfg.input_file)
+        handle_error("Missing input file", NULL, !(error=true));
+
+    cfg.valid = !error;
+    return cfg;
+}
 
 /*--------------------------------------------------------------------
  *  Local helpers
@@ -144,7 +284,14 @@ char *remove_comments(const char *src, precompiler_stats_t *st)
     char  *dest  = malloc(len + 1);      /* worst‑case: nothing removed */
     if (!dest) handle_error("malloc failed", NULL, true);
 
-    enum { CODE, SLASH, LINE_COMMENT, BLOCK_COMMENT, STAR, STRING, CHARLIT } state = CODE;
+    enum { 
+        CODE, 
+        SLASH, 
+        LINE_COMMENT, 
+        BLOCK_COMMENT, 
+        STAR, 
+        STRING, 
+        CHARLIT } state = CODE;
 
     size_t i = 0, j = 0;
     while (i < len) {
