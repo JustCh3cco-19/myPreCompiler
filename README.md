@@ -6,6 +6,6 @@
 - [ ] preprocessing_files
 - [x] resolve_includes
 - [x] resolve_comments
-- [ ] validate_identifiers
+- [x] validate_identifiers
 - [x] handle_error
 - [x] print_stats
