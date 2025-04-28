@@ -40,19 +40,26 @@ clean:
 	rm -f $(TARGET) $(OBJECTS)
 	rmdir $(OBJ_DIR) 2>/dev/null || true
 
-# … resto del Makefile invariato …
-
+# Test rule with statistics enabled
 test: $(TARGET)
-	@echo "Eseguo il test in $(TEST_DIR)…"
-	@cd $(TEST_DIR) && ../$(TARGET) -v test_input.c -o test_output.c
+	@echo "Eseguo il test in $(TEST_DIR)..."
+	@cd $(TEST_DIR) && ../$(TARGET) -v -s test_input.c -o test_output.c
 	@if [ ! -f $(TEST_DIR)/expected_output.c ]; then \
-	  echo "Generating expected_output.c…"; \
+	  echo "Generating expected_output.c..."; \
 	  cp $(TEST_DIR)/test_output.c $(TEST_DIR)/expected_output.c; \
 	fi
-	@echo "Confronto con expected_output.c…"
+	@echo "Confronto con expected_output.c..."
 	@if diff -q $(TEST_DIR)/test_output.c $(TEST_DIR)/expected_output.c >/dev/null; then \
 	    echo "✓ Test passed!"; \
 	else \
 	    echo "✗ Test failed!"; \
 	    exit 1; \
 	fi
+
+# Run with statistics
+stats: $(TARGET)
+	@echo "Esecuzione con statistiche..."
+	./$(TARGET) -v -s $(FILE_INPUT) -o $(FILE_OUTPUT)
+
+# Phony targets
+.PHONY: all clean test stats

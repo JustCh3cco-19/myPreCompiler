@@ -53,6 +53,9 @@ char* resolve_includes(const char* code, const char* base_filename, Stats* stats
     while (*pos != '\0') {
         // Look for #include directive
         if (strncmp(pos, "#include", 8) == 0 && (isspace(*(pos+8)) || *(pos+8) == '\"' || *(pos+8) == '<')) {
+            // Store the position of # for system includes
+            const char* include_start = pos;
+            
             // Skip "#include" and any whitespace
             pos += 8;
             while (isspace(*pos)) pos++;
@@ -143,10 +146,11 @@ char* resolve_includes(const char* code, const char* base_filename, Stats* stats
                 }
             } else {
                 // System include with < > brackets - keep as is
-                const char* directive_start = pos - 8; // Include "#include"
+                // Find the end of this include line
+                const char* line_start = include_start; // Start from the # character
                 while (*pos != '\n' && *pos != '\0') pos++;
                 
-                size_t directive_len = pos - directive_start;
+                size_t directive_len = pos - line_start;
                 
                 // Resize result buffer if needed
                 size_t required_size = result_len + directive_len + 1;
@@ -161,8 +165,8 @@ char* resolve_includes(const char* code, const char* base_filename, Stats* stats
                     result = new_result;
                 }
                 
-                // Copy system include directive
-                strncpy(result + result_len, directive_start, directive_len);
+                // Copy system include directive completely (including the #)
+                strncpy(result + result_len, line_start, directive_len);
                 result_len += directive_len;
                 result[result_len] = '\0';
             }
