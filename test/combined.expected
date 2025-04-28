@@ -1,5 +1,0 @@
-#define GOOD   1
-#define _X     2
-#define BAD-NAME 3
-float x; double two&four;
-char c = 'a';

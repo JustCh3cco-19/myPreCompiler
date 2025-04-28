@@ -1,8 +1,0 @@
-combined.c:3: invalid identifier "BAD-NAME"
-combined.c:4: invalid identifier "two&four"
-Variables checked:   4
-Invalid identifiers: 2
-Comments removed:    2
-Files included:      1
-Input:  4 lines,  101 bytes
-Output: 3 lines,  82 bytes

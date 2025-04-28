@@ -1,50 +1,97 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-#include "precompiler.h"
+#include <string.h>
+#include <stdbool.h>
+#include "preprocessor.h"
+#include "fileutils.h"
+#include "statistics.h"
 
-static void usage(FILE *stream, const char *prog) {
-    fprintf(stream,
-        "Usage: %s [options] <input.c>\n"
-        "Options:\n"
-        " -i, --in <file>   file di input (obbligatorio se non passato come argomento libero)\n"
-        " -o, --out <file>  file di output (stdout se omesso)\n"
-        " -v, --verbose     stampa statistiche su stderr\n"
-        " -h, --help        mostra questo messaggio\n",
-        prog
-    );
+void print_usage(char* program_name) {
+    fprintf(stderr, "Usage: %s [-i|--in] input_file [-o|--out output_file] [-v|--verbose]\n", program_name);
+    fprintf(stderr, "  -i, --in     : input file (required if not provided as first argument)\n");
+    fprintf(stderr, "  -o, --out    : output file (optional, stdout if not specified)\n");
+    fprintf(stderr, "  -v, --verbose: show processing statistics\n");
 }
 
 int main(int argc, char *argv[]) {
-    config_t cfg = parsing_arguments(argc, argv);
-    if (!cfg.valid) {
-        usage(stderr, argv[0]);
+    char *input_file = NULL;
+    char *output_file = NULL;
+    bool verbose = false;
+    
+    // Parse command line arguments
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--in") == 0) {
+            if (i + 1 < argc) {
+                input_file = argv[++i];
+            } else {
+                fprintf(stderr, "Error: Input file is missing after %s option\n", argv[i]);
+                print_usage(argv[0]);
+                return EXIT_FAILURE;
+            }
+        } else if (strncmp(argv[i], "--in=", 5) == 0) {
+            input_file = argv[i] + 5;
+        } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--out") == 0) {
+            if (i + 1 < argc) {
+                output_file = argv[++i];
+            } else {
+                fprintf(stderr, "Error: Output file is missing after %s option\n", argv[i]);
+                print_usage(argv[0]);
+                return EXIT_FAILURE;
+            }
+        } else if (strncmp(argv[i], "--out=", 6) == 0) {
+            output_file = argv[i] + 6;
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+            verbose = true;
+        } else if (input_file == NULL) {
+            // First non-option argument is treated as input file
+            input_file = argv[i];
+        } else {
+            fprintf(stderr, "Error: Unknown option or argument: %s\n", argv[i]);
+            print_usage(argv[0]);
+            return EXIT_FAILURE;
+        }
+    }
+    
+    // Check if input file is provided
+    if (input_file == NULL) {
+        fprintf(stderr, "Error: Input file is required\n");
+        print_usage(argv[0]);
         return EXIT_FAILURE;
     }
-
-    precompiler_stats_t stats = {0};
-
-    // 1) preprocessing: include + rimozione commenti
-    char *processed = preprocessing_file(cfg.input_file, &stats);
-
-    // 2) validazione degli identificatori
-    validate_identifiers(processed, &stats, cfg.input_file);
-
-    // 3) emissione dell'output
-    FILE *out = stdout;
-    if (cfg.output_file) {
-        out = fopen(cfg.output_file, "w");
-        if (!out)
-            handle_error("Cannot open output file", cfg.output_file, true);
+    
+    // Initialize statistics
+    Stats stats;
+    init_stats(&stats);
+    
+    // Process the input file
+    char *processed_code = preprocess_file(input_file, &stats);
+    if (processed_code == NULL) {
+        fprintf(stderr, "Error: Failed to preprocess the input file\n");
+        return EXIT_FAILURE;
     }
-    fputs(processed, out);
-    if (cfg.output_file)
-        fclose(out);
-
-    // 4) statistiche verbose su stderr
-    if (cfg.verbose)
+    
+    // Output the result
+    if (output_file != NULL) {
+        // Write to the specified output file
+        if (!write_to_file(output_file, processed_code, &stats)) {
+            fprintf(stderr, "Error: Failed to write to output file: %s\n", output_file);
+            free(processed_code);
+            free_stats(&stats);
+            return EXIT_FAILURE;
+        }
+    } else {
+        // Write to stdout
+        printf("%s", processed_code);
+    }
+    
+    // Print statistics if verbose mode is enabled
+    if (verbose) {
         print_stats(&stats);
-
-    free(processed);
+    }
+    
+    // Clean up
+    free(processed_code);
+    free_stats(&stats);
+    
     return EXIT_SUCCESS;
 }
