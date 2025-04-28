@@ -1,0 +1,9 @@
+identifiers.c:1: invalid identifier "x-ray"
+identifiers.c:1: invalid identifier "5brothers"
+identifiers.c:3: invalid identifier "2BADMACRO"
+Variables checked:   6
+Invalid identifiers: 3
+Comments removed:    0
+Files included:      0
+Input:  2 lines,  82 bytes
+Output: 2 lines,  82 bytes
