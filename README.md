@@ -1,11 +1,9 @@
 # myPreCompiler
 
-### Funzioni TODO
+### Come compilare
 
-- [x] parsing_arguments
-- [ ] preprocessing_files
-- [x] resolve_includes
-- [x] resolve_comments
-- [x] validate_identifiers
-- [x] handle_error
-- [x] print_stats
+gcc main.c preprocessor.c utils.c -o myPreCompiler.out
+
+### Eseguire i test 
+
+./myPreCompiler.out -i test/test2.c -v -o test2_processed.c
