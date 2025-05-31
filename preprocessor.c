@@ -11,7 +11,7 @@
 // Profondità massima consentita per l'inclusione ricorsiva di file (#include)
 #define MAX_INCLUDE_DEPTH 10
 
-// Stato della macchina a stati per la rimozione dei commenti dal codice sorgente
+// Rimozione dei commenti dal codice sorgente
 typedef enum {
     CODE,           // Analisi normale del codice (non in commento)
     SLASH,          // Trovato '/' in attesa di capire se è l'inizio di un commento
@@ -20,7 +20,7 @@ typedef enum {
     STAR_IN_BLOCK   // Trovato '*' all'interno di un commento multi-linea
 } CommentState;
 
-// Stato della macchina a stati per il parsing delle dichiarazioni di variabili
+// Parsing delle dichiarazioni di variabili
 typedef enum {
     PRE_MAIN,                 // Prima di trovare la funzione 'main'
     GLOBAL_DECL,              // Analisi delle dichiarazioni globali (prima di 'main')
@@ -126,7 +126,7 @@ void process_declaration_line(char* line, int line_num, const char* current_file
 
     // Analizza dichiarazioni globali o locali
     if (*p_state == GLOBAL_DECL || *p_state == IN_MAIN_LOCAL_DECL) {
-        // Verifica se la riga termina con ';' (euristica per dichiarazione)
+        // Verifica se la riga termina con ';'
         char* end = line + strlen(line) - 1;
         while(end >= line && isspace((unsigned char)*end)) end--;
         bool ends_with_semicolon = (end >= line && *end == ';');
@@ -321,7 +321,7 @@ int process_c_file(const char* input_filename, FILE* out_stream, ProcessingStats
         }
         processed_line[processed_len] = '\0';
 
-        // Verifica se la riga processata è vuota o solo spazi
+        // Verifica se la riga processata è vuota o ci sono solo spazi
         char* check_empty = processed_line;
         while(isspace((unsigned char)*check_empty)) check_empty++;
         current_line_is_fully_commented = (*check_empty == '\0');

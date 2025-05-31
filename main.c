@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>      // Per strcmp, strncmp (per parsing manuale)
+#include <string.h>
 #include <stdbool.h>
 #include <errno.h>
-// Rimosso #include <unistd.h> (per getopt)
 #include "myPreCompiler.h"
 
-// Funzione per stampare le istruzioni d'uso
+/**
+ * Stampa le istruzioni d'uso del programma su stderr.
+ * @param prog_name Nome dell'eseguibile (tipicamente argv[0]).
+ */
 void print_usage(const char* prog_name) {
     fprintf(stderr, "Usage: %s [-v] [-o <output_file>] -i <input_file.c>\n", prog_name);
     fprintf(stderr, "   o: %s [-v] [-o <output_file>] <input_file.c>\n", prog_name);
@@ -17,16 +19,21 @@ void print_usage(const char* prog_name) {
     fprintf(stderr, "  <input_file.c>     Alternativa per specificare l'input se è il primo argomento.\n");
 }
 
+/**
+ * Funzione principale del precompilatore.
+ * Gestisce il parsing degli argomenti, apre i file di input/output,
+ * chiama il pre-processing e stampa statistiche e messaggi di stato.
+ */
 int main(int argc, char *argv[]) {
-    char* input_filename = NULL;
-    char* output_filename = NULL;
-    bool verbose_mode = false;
+    char* input_filename = NULL;     // Nome del file di input C da processare
+    char* output_filename = NULL;    // Nome del file di output (opzionale)
+    bool verbose_mode = false;       // Flag per abilitare la stampa delle statistiche
 
-    // --- Parsing manuale degli argomenti ---
-    // Rimosso getopt, optarg, optind
+    // --- Parsing manuale degli argomenti della riga di comando ---
+    // Supporta: -i <input>, -o <output>, -v, oppure input come primo argomento
     int i;
     for (i = 1; i < argc; ++i) {
-        if (argv[i][0] == '-') { // È un'opzione
+        if (argv[i][0] == '-') { // Opzione con '-'
             if (strcmp(argv[i], "-i") == 0) {
                 if (input_filename != NULL) {
                     fprintf(stderr, "Errore: Opzione -i specificata più volte.\n");
@@ -34,7 +41,7 @@ int main(int argc, char *argv[]) {
                     return 1;
                 }
                 if (i + 1 < argc) {
-                    input_filename = argv[++i]; // Prendi l'argomento successivo e salta un'altra iterazione
+                    input_filename = argv[++i]; // Prendi il file di input
                 } else {
                     fprintf(stderr, "Errore: L'opzione -i richiede un argomento (nome file).\n");
                     print_usage(argv[0]);
@@ -46,23 +53,22 @@ int main(int argc, char *argv[]) {
                     print_usage(argv[0]);
                     return 1;
                 }
-                 if (i + 1 < argc) {
-                    output_filename = argv[++i]; // Prendi l'argomento successivo e salta un'altra iterazione
+                if (i + 1 < argc) {
+                    output_filename = argv[++i]; // Prendi il file di output
                 } else {
                     fprintf(stderr, "Errore: L'opzione -o richiede un argomento (nome file).\n");
                     print_usage(argv[0]);
                     return 1;
                 }
             } else if (strcmp(argv[i], "-v") == 0) {
-                verbose_mode = true;
+                verbose_mode = true; // Abilita modalità verbosa
             } else {
                 fprintf(stderr, "Errore: Opzione non riconosciuta '%s'.\n", argv[i]);
                 print_usage(argv[0]);
                 return 1;
             }
-        } else { // Non è un'opzione
+        } else { // Argomento senza '-': considerato come file di input se non già specificato
             if (input_filename == NULL) {
-                // Questo è il primo argomento non-opzione, lo consideriamo il file di input
                 input_filename = argv[i];
             } else {
                 fprintf(stderr, "Errore: Argomento non riconosciuto '%s' dopo il file di input.\n", argv[i]);
@@ -72,54 +78,48 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Controllo obbligatorio: input filename deve essere stato specificato in un modo o nell'altro
+    // Verifica che il file di input sia stato specificato
     if (input_filename == NULL) {
         fprintf(stderr, "Errore: File di input non specificato (usare -i <file> o specificarlo come primo argomento).\n");
         print_usage(argv[0]);
         return 1;
     }
-    // --- Fine Parsing manuale ---
+    // --- Fine parsing argomenti ---
 
-
-    // Determina lo stream di output
+    // Determina lo stream di output: stdout di default, oppure file se richiesto
     FILE* out_stream = stdout;
-    bool custom_output_file = false; // Flag per sapere se dobbiamo chiudere out_stream
+    bool custom_output_file = false; // Serve per sapere se chiudere out_stream
     if (output_filename != NULL) {
         out_stream = fopen(output_filename, "w");
         if (!out_stream) {
             fprintf(stderr, "Errore: Impossibile aprire il file di output '%s': %s\n", output_filename, strerror(errno));
-            // Non c'è bisogno di liberare stats qui perché non sono ancora state popolate
-            return 1; // Errore fatale
+            return 1;
         }
         custom_output_file = true;
     }
 
-    // Inizializza la struttura delle statistiche
+    // Inizializza la struttura delle statistiche di elaborazione
     ProcessingStats stats;
     init_stats(&stats, verbose_mode);
 
-    // --- Esegui il Processamento ---
-    fprintf(stderr, "Processando il file: %s\n", input_filename); // Feedback utente
-    int result = process_c_file(input_filename, out_stream, &stats, 0); // 0 è la profondità iniziale
+    // --- Avvia il pre-processing del file ---
+    fprintf(stderr, "Processando il file: %s\n", input_filename);
+    int result = process_c_file(input_filename, out_stream, &stats, 0); // 0 = profondità iniziale
 
-    // --- Operazioni Post-Processamento ---
-
-    // Chiudi il file di output SOLO se ne è stato aperto uno specifico (non stdout)
+    // --- Operazioni di chiusura e stampa risultati ---
+    // Chiudi il file di output solo se non è stdout
     if (custom_output_file) {
         if (fclose(out_stream) != 0) {
             fprintf(stderr, "Errore durante la chiusura del file di output '%s': %s\n", output_filename, strerror(errno));
-            // Se la processazione era andata bene, ora segnala errore
             if (result == 0) result = 1;
         } else if (result == 0) {
-             fprintf(stderr, "File processato scritto con successo in: %s\n", output_filename);
+            fprintf(stderr, "File processato scritto con successo in: %s\n", output_filename);
         }
     } else if (result == 0) {
-         fprintf(stderr, "File processato scritto su stdout.\n");
+        fprintf(stderr, "File processato scritto su stdout.\n");
     }
 
-
-    // Stampa Statistiche (se richieste) su stderr
-    // Vengono stampate anche se result != 0 per mostrare cosa è stato fatto fino all'errore
+    // Stampa statistiche di elaborazione se richiesto
     if (verbose_mode) {
         print_stats(&stats, stderr);
     }
@@ -127,13 +127,12 @@ int main(int argc, char *argv[]) {
     // Libera memoria allocata per le statistiche
     free_stats(&stats);
 
-    // Stampa messaggio finale di successo/errore
+    // Messaggio finale di stato
     if (result == 0) {
         fprintf(stderr, "Elaborazione completata con successo.\n");
     } else {
         fprintf(stderr, "Elaborazione terminata con errori.\n");
     }
 
-
-    return (result == 0) ? 0 : 1; // Ritorna 0 per successo, 1 per errore
+    return (result == 0) ? 0 : 1; // 0 = successo, 1 = errore
 }
