@@ -2,7 +2,7 @@
 
 ### Come compilare
 
-gcc main.c preprocessor.c utils.c -o myPreCompiler.out
+gcc src/main.c src/preprocessor.c src/utils.c -Iinclude -o myPreCompiler.out
 
 ### Eseguire i test (esempio)
 
