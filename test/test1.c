@@ -6,7 +6,7 @@
 //meglio eliminare questo include
 //#include "hello_world_1.c"
 
-#include "test/test1.h"
+#include "test1.h"
 
 /*le variabili global sono pericolose*/
 
